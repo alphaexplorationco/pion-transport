@@ -242,6 +242,9 @@ func (b *Buffer) Read(packet []byte) (n int, err error) {
 				// in order to improve cache locality.
 				b.head = 0
 				b.tail = 0
+				if b.closed {
+					b.data = nil
+				}
 			}
 
 			b.count--
