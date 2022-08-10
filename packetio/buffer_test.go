@@ -426,7 +426,7 @@ func TestBufferAlloc(t *testing.T) {
 		}
 	}
 
-	t.Run("100 writes", test(w, 100, 13))
+	t.Run("100 writes", test(w, 100, 14))
 	t.Run("200 writes", test(w, 200, 17))
 	t.Run("400 writes", test(w, 400, 19))
 	t.Run("1000 writes", test(w, 1000, 23))
@@ -447,9 +447,9 @@ func TestBufferAlloc(t *testing.T) {
 		}
 	}
 
-	t.Run("100 writes and reads", test(wr, 100, 7))
-	t.Run("1000 writes and reads", test(wr, 1000, 7))
-	t.Run("10000 writes and reads", test(wr, 10000, 7))
+	t.Run("100 writes and reads", test(wr, 100, 8))
+	t.Run("1000 writes and reads", test(wr, 1000, 8))
+	t.Run("10000 writes and reads", test(wr, 10000, 8))
 }
 
 func benchmarkBufferWR(b *testing.B, size int64, write bool, grow int) { // nolint:unparam

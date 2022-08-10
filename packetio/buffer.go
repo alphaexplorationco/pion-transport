@@ -46,10 +46,24 @@ type Buffer struct {
 }
 
 const (
-	minSize    = 2048
-	cutoffSize = 128 * 1024
-	maxSize    = 4 * 1024 * 1024
+	minSize     = 2048
+	cutoffSize  = 128 * 1024
+	maxSize     = 4 * 1024 * 1024
+	useBufPools = true
 )
+
+var bufPools = make(map[int]*sync.Pool)
+
+func init() {
+	if useBufPools {
+		for n := minSize; n <= maxSize; n *= 2 {
+			n := n
+			bufPools[n] = &sync.Pool{
+				New: func() interface{} { return make([]byte, n) },
+			}
+		}
+	}
+}
 
 // NewBuffer creates a new Buffer.
 func NewBuffer() *Buffer {
@@ -78,7 +92,9 @@ func (b *Buffer) available(size int) bool {
 // buffer has been grown.  It returns ErrFull if hits a limit.
 func (b *Buffer) grow() error {
 	var newsize int
-	if len(b.data) < cutoffSize {
+	if len(bufPools) > 0 {
+		newsize = 2 * len(b.data)
+	} else if len(b.data) < cutoffSize {
 		newsize = 2 * len(b.data)
 	} else {
 		newsize = 5 * len(b.data) / 4
@@ -99,7 +115,12 @@ func (b *Buffer) grow() error {
 		return ErrFull
 	}
 
-	newdata := make([]byte, newsize)
+	var newdata []byte
+	if p, ok := bufPools[newsize]; ok {
+		newdata = p.Get().([]byte)
+	} else {
+		newdata = make([]byte, newsize)
+	}
 
 	var n int
 	if b.head <= b.tail {
@@ -112,6 +133,9 @@ func (b *Buffer) grow() error {
 	}
 	b.head = 0
 	b.tail = n
+	if p, ok := bufPools[len(b.data)]; ok {
+		p.Put(b.data)
+	}
 	b.data = newdata
 
 	return nil
@@ -243,7 +267,11 @@ func (b *Buffer) Read(packet []byte) (n int, err error) {
 				b.head = 0
 				b.tail = 0
 				if b.closed {
-					b.data = nil
+					if p, ok := bufPools[len(b.data)]; ok {
+						p.Put(b.data)
+					} else {
+						b.data = nil
+					}
 				}
 			}
 
